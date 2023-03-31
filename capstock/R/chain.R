@@ -45,7 +45,7 @@ chain <- function(series, lastCompleteYear = 2016, cypColumn = "CYP", pypColumn 
   stopifnot("Year" %in% columns)
   stopifnot(lastCompleteYear %in% series$Year)
   if (any(is.na(series[cypColumn]))) stop("CYP values must not be NA.")
-
+  
   # add quarter values, probably already there but this is easier
   withQuarter <- series %>%
     dplyr::group_by(Year) %>%
@@ -74,9 +74,16 @@ chain <- function(series, lastCompleteYear = 2016, cypColumn = "CYP", pypColumn 
   #View(.data)
   
   #quarterly CVM constrained to annual CVM
-  cvm.a <- ts(annualCVM$AnnualCVM, start = 1995, end = lastCompleteYear)
-  cvm.q <- ts(quarterlyCVM$UnconstrainedCVM, frequency = 4, start = c(1995,1),end = c(lastCompleteYear,4))
-  series[, "CVM"] <- predict(td(cvm.a ~ 0 + cvm.q, method = "denton-cholette", to = "quarterly", conversion = benchType))
+  cvm.a <- ts(annualCVM$AnnualCVM, start = annualCVM$Year[1], end = lastCompleteYear)
+  cvm.q <- ts(quarterlyCVM$UnconstrainedCVM, frequency = 4, start = c(quarterlyCVM$Year[1],1),end = c(lastCompleteYear,4))
+  
+  #No need to benchmark for stocks as Q4 CVM = annual CVM
+  if (chainType == "Flow"){
+    series[, "CVM"] <- predict(td(cvm.a ~ 0 + cvm.q, method = "denton-cholette", to = "quarterly", conversion = benchType,))
+  }
+  if (chainType =="Stock"){
+    series[, "CVM"] <- cvm.q
+  }
   
   return(series)
 
